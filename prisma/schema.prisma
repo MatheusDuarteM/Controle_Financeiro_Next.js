@@ -1,0 +1,33 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // NÃO coloque url ou directUrl aqui! Eles foram para o prisma.config.ts
+}
+
+model Profile {
+  id     String  @id @default(uuid())
+  email  String  @unique
+  saldo  Float   @default(0)
+
+  transacoes Transaction[]
+
+  @@map("profiles")
+}
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  descricao String
+  valor     Float
+  tipo      String
+  createdAt DateTime @default(now())
+  
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id])
+
+  @@map("transactions")
+}
