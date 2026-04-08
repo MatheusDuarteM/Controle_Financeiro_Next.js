@@ -17,6 +17,7 @@
     "@radix-ui/react-label": "^2.1.8",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
+    "better-auth": "^1.6.0",
     "class-variance-authority": "^0.7.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",

@@ -78,9 +78,11 @@ const SectionQuadrado1 = ({ saldo, transacoes }: SectionQuadrado1Props) => {
             <DialogContent>
               {/* Usamos 'action' para chamar o servidor diretamente */}
               <form
-                action={async (formData) => {
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
                   const novoSaldo = parseFloat(
-                    formData.get("novoSaldo") as string
+                    formData.get("novoSaldo") as string,
                   );
                   await atualizarSaldoManual(novoSaldo); // Chama o banco
                   setOpenEditorSaldo(false); // Fecha o modal
@@ -136,11 +138,21 @@ const SectionQuadrado1 = ({ saldo, transacoes }: SectionQuadrado1Props) => {
             </DialogTrigger>
             <DialogContent>
               <form
-                action={async (formData) => {
-                  // Injetamos o tipo 'entrada' no formData
-                  formData.append("tipo", "entrada");
-                  await adicionarTransacao(formData); // Chama o banco
-                  setOpenDeposito(false); // Fecha o modal
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const descricao = formData.get("descricao") as string;
+                  const valor = parseFloat(formData.get("valor") as string);
+                  const tipo = "entrada";
+
+                  const resultado = await adicionarTransacao(
+                    descricao,
+                    valor,
+                    tipo,
+                  );
+                  if (resultado?.sucesso) {
+                    setOpenDeposito(false); // Fecha o modal
+                  }
                 }}
               >
                 <DialogHeader>
@@ -185,11 +197,21 @@ const SectionQuadrado1 = ({ saldo, transacoes }: SectionQuadrado1Props) => {
             </DialogTrigger>
             <DialogContent>
               <form
-                action={async (formData) => {
-                  // Injetamos o tipo 'saida' no formData
-                  formData.append("tipo", "saida");
-                  await adicionarTransacao(formData); // Chama o banco
-                  setOpenGasto(false); // Fecha o modal
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const descricao = formData.get("descricao") as string;
+                  const valor = parseFloat(formData.get("valor") as string);
+                  const tipo = "saida";
+
+                  const resultado = await adicionarTransacao(
+                    descricao,
+                    valor,
+                    tipo,
+                  );
+                  if (resultado?.sucesso) {
+                    setOpenGasto(false); // Fecha o modal
+                  }
                 }}
               >
                 <DialogHeader>
@@ -212,8 +234,7 @@ const SectionQuadrado1 = ({ saldo, transacoes }: SectionQuadrado1Props) => {
                 <DialogFooter>
                   <Button
                     type="submit"
-                    variant="destructive"
-                    className="bg-red-600 text-white font-bold"
+                    className="bg-rose-600 text-white font-bold"
                   >
                     Confirmar
                   </Button>

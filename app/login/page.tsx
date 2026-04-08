@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,27 +11,42 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { login } from "@/app/auth-actions";
 import Link from "next/link";
 import { useState } from "react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState(""); // Estado para guardar o erro
+  const [erro, setErro] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  async function handleLogin(formData: FormData) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setLoading(true);
-    setErro(""); // Limpa erro anterior
+    setErro("");
 
-    // Chama a Server Action
-    const resultado = await login(formData);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Se a função retornou algo (significa que deu erro, pois se desse certo, teria redirecionado)
-    if (resultado?.erro) {
-      setErro(resultado.erro);
+      const resultado = await response.json();
+
+      if (!response.ok) {
+        setErro(resultado.erro || "Erro ao fazer login. Tente novamente.");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/");
+    } catch (error) {
+      setErro("Erro ao fazer login. Tente novamente.");
       setLoading(false);
     }
-    // Se não retornou nada, é porque o redirect aconteceu no server
   }
 
   return (
@@ -43,8 +59,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={handleLogin} className="space-y-4">
-            {/* Exibe o erro se existir */}
+          <form onSubmit={handleLogin} className="space-y-4">
             {erro && (
               <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md text-center">
                 {erro}
@@ -55,15 +70,22 @@ export default function LoginPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
                 required
                 placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" name="password" type="password" required />
+              <Input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
             <Button
               type="submit"

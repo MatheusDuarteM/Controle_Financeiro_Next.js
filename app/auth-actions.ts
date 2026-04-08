@@ -2,71 +2,63 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase";
+import { prisma } from "@/lib/prisma";
 
-// --- LOGIN ---
-export async function login(formData: FormData) {
-  console.log("--> Tentando fazer Login..."); // LOG 1
+// --- LOGIN COM SUPABASE AUTH ---
+export async function login(email: string, password: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) {
-    console.error("Erro no Supabase Login:", error.message); // LOG DE ERRO
-    return { erro: error.message };
+    if (error) {
+      return { erro: error.message || "Erro ao fazer login" };
+    }
+  } catch (error) {
+    console.error("Erro no login:", error);
+    return { erro: "Erro ao fazer login. Tente novamente." };
   }
 
-  console.log("Login Sucesso! Redirecionando...");
   revalidatePath("/", "layout");
   redirect("/");
 }
 
-// --- CADASTRO ---
-export async function cadastro(formData: FormData) {
-  console.log("--> Tentando fazer Cadastro..."); // LOG 2
+// --- CADASTRO COM SUPABASE AUTH ---
+export async function cadastro(nome: string, email: string, password: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: nome },
+      },
+    });
 
-  const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const nome = formData.get("nome") as string;
-
-  // 1. Cria usuário no Supabase Auth
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { full_name: nome },
-    },
-  });
-
-  if (error) {
-    console.error("Erro no Supabase Cadastro:", error.message); // LOG DE ERRO
-    return { erro: error.message };
-  }
-
-  // 2. Cria perfil no Banco (Prisma)
-  if (data.user) {
-    try {
-      console.log("Criando perfil no Prisma...");
-      await prisma.profile.create({
-        data: {
-          id: data.user.id,
-          email: email,
-          saldo: 0,
-        },
-      });
-      console.log("Perfil criado com sucesso!");
-    } catch (e) {
-      console.error("Erro ao salvar no Prisma:", e); // LOG DE ERRO PRISMA
-      // Não retornamos erro aqui para não travar o login se o user já existir
+    if (error) {
+      return { erro: error.message || "Erro ao fazer cadastro" };
     }
+
+    // Cria perfil no banco de dados
+    if (data.user) {
+      try {
+        await prisma.profile.create({
+          data: {
+            id: data.user.id,
+            email: email,
+            saldo: 0,
+          },
+        });
+      } catch (e) {
+        console.error("Erro ao criar perfil:", e);
+      }
+    }
+  } catch (error) {
+    console.error("Erro no cadastro:", error);
+    return { erro: "Erro ao fazer cadastro. Tente novamente." };
   }
 
   revalidatePath("/", "layout");
@@ -75,37 +67,42 @@ export async function cadastro(formData: FormData) {
 
 // --- LOGOUT ---
 export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error("Erro ao fazer logout:", error);
+    return { erro: "Erro ao fazer logout." };
+  }
+
   revalidatePath("/", "layout");
   redirect("/login");
 }
 
-export async function resetarSenha(formData: FormData) {
-  const supabase = createClient();
-  const email = formData.get("email") as string;
+// --- RESETAR SENHA ---
+export async function resetarSenha(email: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/nova-senha`,
+    });
 
-  const { error } = await (
-    await supabase
-  ).auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/nova-senha`,
-  });
+    if (error) {
+      return { erro: error.message || "Erro ao resetar senha" };
+    }
 
-  if (error) {
-    return { erro: error.message };
+    return { sucesso: "Verifique seu email para redefinir a senha." };
+  } catch (error) {
+    console.error("Erro ao resetar senha:", error);
+    return { erro: "Erro ao resetar senha. Tente novamente." };
   }
-
-  return { sucesso: "Verifique seu email para redefinir a senha." };
 }
 
 export async function novaSenha(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const senha = formData.get("senha") as string;
-  const token = formData.get("token") as string;
 
-  const { error } = await (
-    await supabase
-  ).auth.updateUser({
+  const { error } = await supabase.auth.updateUser({
     password: senha,
   });
 
